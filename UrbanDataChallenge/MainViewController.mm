@@ -29,6 +29,8 @@
     // Data range selector
     IBOutlet ACVRangeSelector *rangeSelect;
     IBOutlet UILabel *startLabel,*endLabel;
+    IBOutlet UISlider *tiltSlider;
+    IBOutlet UISegmentedControl *segControl;
     // Currently displayed cylinders
     MaplyComponentObject *shapesObj;
     // We'll run the queries on this dispatch queue
@@ -50,7 +52,7 @@ static const float RangeHeight = 80.0;
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-
+        
     // Create a globe
     globeViewC = [[WhirlyGlobeViewController alloc] init];
     globeViewC.delegate = self;
@@ -61,8 +63,8 @@ static const float RangeHeight = 80.0;
     [self addChildViewController:baseViewC];
     
     // Start up over San Francisco, center of the universe
-    globeViewC.height = 0.001;
-    [globeViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) time:1.0];
+//    globeViewC.height = 0.001;
+//    [globeViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) time:1.0];
     
     // For network paging layers, where we'll store temp files
     NSString *cacheDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES)  objectAtIndex:0];
@@ -79,7 +81,7 @@ static const float RangeHeight = 80.0;
     }
 
     // Let's load our transit database
-    NSString *sfDbPath = [[NSBundle mainBundle] pathForResource:@"sf_transit_tables_1_0" ofType:@"db"];
+    NSString *sfDbPath = [[NSBundle mainBundle] pathForResource:@"sf_transit_tables_1_1" ofType:@"db"];
     if (sfDbPath)
     {
         sfDb = [[FMDatabase alloc] initWithPath:sfDbPath];
@@ -106,7 +108,25 @@ static const float RangeHeight = 80.0;
     [rangeSelect addTarget:self action:@selector(rangeSelectChanged:) forControlEvents:UIControlEventAllEvents];
     [rangeSelect addTarget:self action:@selector(rangeSelectChangeDone:) forControlEvents:UIControlEventTouchUpInside];
     [self rangeSelectChanged:self];
+
+    // Configure the tilt slider
+    CGAffineTransform trans = CGAffineTransformMakeRotation(M_PI * 0.5);
+    tiltSlider.transform = trans;
+    [tiltSlider addTarget:self action:@selector(tiltChanged:) forControlEvents:UIControlEventAllEvents];
+    tiltSlider.value = 0.0;
     
+    // Configure the segment control
+    [segControl removeAllSegments];
+    [segControl insertSegmentWithTitle:@"Mon (Oct 1)" atIndex:0 animated:NO];
+    [segControl insertSegmentWithTitle:@"Tuesday" atIndex:1 animated:NO];
+    [segControl insertSegmentWithTitle:@"Wednesday" atIndex:2 animated:NO];
+    [segControl insertSegmentWithTitle:@"Thursday" atIndex:3 animated:NO];
+    [segControl insertSegmentWithTitle:@"Friday" atIndex:4 animated:NO];
+    [segControl insertSegmentWithTitle:@"Saturday" atIndex:5 animated:NO];
+    [segControl insertSegmentWithTitle:@"Sunday" atIndex:6 animated:NO];
+    segControl.selectedSegmentIndex = 0;
+    [segControl addTarget:self action:@selector(rangeSelectChangeDone:) forControlEvents:UIControlEventValueChanged];
+
     queryQueue = dispatch_queue_create("com.mousebirdconsulting.queryQueue", NULL);
     
     // Toss in some data after a bit
@@ -122,6 +142,12 @@ static const float RangeHeight = 80.0;
 
     startLabel.text = [NSString stringWithFormat:@"%.2d:%.2d",startHour,startMin % 60];
     endLabel.text = [NSString stringWithFormat:@"%.2d:%.2d",endHour,endMin % 60];
+}
+
+- (void)tiltChanged:(id)sender
+{
+    float newTilt = tiltSlider.value * M_PI/2;
+    [globeViewC setTilt:newTilt];
 }
 
 - (void)rangeSelectChangeDone:(id)sender
@@ -146,11 +172,15 @@ static const float CylinderOffset = 0.000001;
         [baseViewC removeObject:shapesObj];
     shapesObj = nil;
 
-    NSTimeInterval startTime = rangeSelect.leftValue;
-    NSTimeInterval endTime = rangeSelect.rightValue;
+    int dayOfWeek = segControl.selectedSegmentIndex;
+    NSTimeInterval timeOffset = dayOfWeek * 24 * 60* 60;
+    NSTimeInterval startTime = rangeSelect.leftValue + timeOffset;
+    NSTimeInterval endTime = rangeSelect.rightValue + timeOffset;
 
     [rangeSelect setAlpha:0.2];
     [rangeSelect setUserInteractionEnabled:NO];
+    [segControl setAlpha:0.2];
+    [segControl setUserInteractionEnabled:NO];
 
     dispatch_async(queryQueue,
     ^{
@@ -171,7 +201,7 @@ static const float CylinderOffset = 0.000001;
 //            max_total = std::max(max_pass_on+max_pass_off,max_total);
 //        }
         // Note: Scaling it each time is goofy
-        max_total = 14000;
+        max_total = 5000;
         
         // Cylinder colors
         UIColor *onColor = [UIColor colorWithRed:79/255.0 green:16/255.0 blue:173/255.0 alpha:1.0];
@@ -222,6 +252,8 @@ static const float CylinderOffset = 0.000001;
 
                            [rangeSelect setAlpha:1.0];
                            [rangeSelect setUserInteractionEnabled:YES];
+                           [segControl setAlpha:1.0];
+                           [segControl setUserInteractionEnabled:YES];
                        });
     });
 }
