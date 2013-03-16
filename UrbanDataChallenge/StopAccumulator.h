@@ -12,6 +12,7 @@
 #include <set>
 #include <vector>
 #import "FMDatabase.h"
+#import "WhirlyGlobeComponent.h"
 
 // Used to accumulate basic stop data
 class StopAccumulator
@@ -20,15 +21,15 @@ public:
     StopAccumulator() { }
     StopAccumulator(const StopAccumulator &that)
     {
-        stop_id = that.stop_id;  lon = that.lon;  lat = that.lat;
-        pass_on = that.pass_on;  pass_off = that.pass_off;
+        stop_id = that.stop_id;  coord = that.coord;
+        value = that.value;
     }
     // Unique stop ID
     int stop_id;
     // Location on the map
-    float lon,lat;
+    MaplyCoordinate coord;
     // Values we're accumulating for now
-    float pass_on,pass_off;
+    float value;
 };
 
 // Comparator for pointers
@@ -46,12 +47,13 @@ typedef std::set<StopAccumulator *,StopAccumulatorCmp> StopAccumulatorSet;
 class StopAccumulatorGroup
 {
 public:
-    StopAccumulatorGroup() {}
+    StopAccumulatorGroup(MaplyVectorObject *stops,NSString *queryField);
     ~StopAccumulatorGroup();
     
     // Run the accumulation over the results of a query
     bool accumulateStops(FMResultSet *results);
     
+    NSString *queryField;
     StopAccumulatorSet stopSet;
 };
 

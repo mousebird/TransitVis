@@ -13,6 +13,10 @@
 #import "FMDatabase.h"
 #import "StopAccumulator.h"
 #import "ACVRangeSelector.h"
+#import "RouteParser.h"
+#import "TransitDataSet.h"
+#import "RouteSelector.h"
+#import "DataFieldSelector.h"
 
 @interface MainViewController () <WhirlyGlobeViewControllerDelegate>
 
@@ -24,17 +28,18 @@
     WhirlyGlobeViewController *globeViewC;
     // Base class for map or globe
     MaplyBaseViewController *baseViewC;
-    // San Francisco database with an FMDB wrapper
-    FMDatabase *sfDb;
     // Data range selector
     IBOutlet ACVRangeSelector *rangeSelect;
     IBOutlet UILabel *startLabel,*endLabel;
     IBOutlet UISlider *tiltSlider;
     IBOutlet UISegmentedControl *segControl;
-    // Currently displayed cylinders
-    MaplyComponentObject *shapesObj;
-    // We'll run the queries on this dispatch queue
-    dispatch_queue_t queryQueue;
+    // Currently active data set
+    TransitDataSet *dataSet;
+    
+    // Used to select routes in the current data set
+    RouteSelector *routeSelector;
+    DataFieldSelector *dataFieldSelector;
+    UIPopoverController *popControl;
 }
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
@@ -63,8 +68,8 @@ static const float RangeHeight = 80.0;
     [self addChildViewController:baseViewC];
     
     // Start up over San Francisco, center of the universe
-//    globeViewC.height = 0.001;
-//    [globeViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) time:1.0];
+    globeViewC.height = 0.001;
+    [globeViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) time:1.0];
     
     // For network paging layers, where we'll store temp files
     NSString *cacheDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES)  objectAtIndex:0];
@@ -80,16 +85,8 @@ static const float RangeHeight = 80.0;
         [[NSFileManager defaultManager] createDirectoryAtPath:thisCacheDir withIntermediateDirectories:YES attributes:nil error:&error];
     }
 
-    // Let's load our transit database
-    NSString *sfDbPath = [[NSBundle mainBundle] pathForResource:@"sf_transit_tables_1_1" ofType:@"db"];
-    if (sfDbPath)
-    {
-        sfDb = [[FMDatabase alloc] initWithPath:sfDbPath];
-        if (![sfDb open])
-        {
-            sfDb = nil;
-        }
-    }
+    // Load the transit database
+    dataSet = [[TransitDataSet alloc] initWithDB:@"sf_transit_tables_1_4" routes:@"sf_routes" stops:@"sf_stops" viewC:baseViewC];
     
     // Configure the slider along the bottom
     [rangeSelect setLeftThumbImage:[UIImage imageNamed:@"pointer-handle"] forState:UIControlStateNormal];
@@ -127,10 +124,18 @@ static const float RangeHeight = 80.0;
     segControl.selectedSegmentIndex = 0;
     [segControl addTarget:self action:@selector(rangeSelectChangeDone:) forControlEvents:UIControlEventValueChanged];
 
-    queryQueue = dispatch_queue_create("com.mousebirdconsulting.queryQueue", NULL);
-    
-    // Toss in some data after a bit
-    [self performSelector:@selector(runData) withObject:nil afterDelay:0.0];
+    // Turn on route display
+    dataSet.displayRoutes = true;
+}
+
+- (void)updateDisplay
+{
+    int dayOfWeek = segControl.selectedSegmentIndex;
+    NSTimeInterval timeOffset = dayOfWeek * 24 * 60* 60;
+    NSTimeInterval startTime = rangeSelect.leftValue + timeOffset;
+    NSTimeInterval endTime = rangeSelect.rightValue + timeOffset;
+
+    [dataSet runQueryFrom:startTime to:endTime];
 }
 
 - (void)rangeSelectChanged:(id)sender
@@ -152,7 +157,7 @@ static const float RangeHeight = 80.0;
 
 - (void)rangeSelectChangeDone:(id)sender
 {
-    [self performSelector:@selector(runData) withObject:nil afterDelay:0.0];
+    [self performSelector:@selector(updateDisplay) withObject:nil afterDelay:0.0];
 }
 
 - (void)didReceiveMemoryWarning
@@ -161,101 +166,57 @@ static const float RangeHeight = 80.0;
     // Dispose of any resources that can be recreated.
 }
 
-static const float MaxCylinderRadius = 0.000002;
-static const float MaxCylinderHeight = 0.002;
-static const float CylinderOffset = 0.000001;
+#pragma mark - Actions
 
-// Naive data extraction
-- (void)runData
+- (IBAction)routeAction:(id)sender
 {
-    if (shapesObj)
-        [baseViewC removeObject:shapesObj];
-    shapesObj = nil;
+    UIButton *button = (UIButton *)sender;
+    
+    UITableViewController *tableViewC = [[UITableViewController alloc] initWithStyle:UITableViewStylePlain];
+    routeSelector = [[RouteSelector alloc] initWithRoutes:dataSet->routes];
+    tableViewC.tableView.dataSource = routeSelector;
+    tableViewC.tableView.delegate = routeSelector;
 
-    int dayOfWeek = segControl.selectedSegmentIndex;
-    NSTimeInterval timeOffset = dayOfWeek * 24 * 60* 60;
-    NSTimeInterval startTime = rangeSelect.leftValue + timeOffset;
-    NSTimeInterval endTime = rangeSelect.rightValue + timeOffset;
+    popControl = [[UIPopoverController alloc] initWithContentViewController:tableViewC];
+    popControl.delegate = self;
+    [popControl presentPopoverFromRect:button.frame inView:self.view permittedArrowDirections:UIPopoverArrowDirectionRight animated:YES];
+}
 
-    [rangeSelect setAlpha:0.2];
-    [rangeSelect setUserInteractionEnabled:NO];
-    [segControl setAlpha:0.2];
-    [segControl setUserInteractionEnabled:NO];
+- (IBAction)fieldAction:(id)sender
+{
+    UIButton *button = (UIButton *)sender;
+    
+    UITableViewController *tableViewC = [[UITableViewController alloc] initWithStyle:UITableViewStylePlain];
+    dataFieldSelector = [[DataFieldSelector alloc] initWithDataFields:dataSet->dataFields];
+    dataFieldSelector->selected = dataSet.selectedField;
+    tableViewC.tableView.dataSource = dataFieldSelector;
+    tableViewC.tableView.delegate = dataFieldSelector;
+    
+    popControl = [[UIPopoverController alloc] initWithContentViewController:tableViewC];
+    popControl.delegate = self;
+    [popControl presentPopoverFromRect:button.frame inView:self.view permittedArrowDirections:UIPopoverArrowDirectionRight animated:YES];    
+}
 
-    dispatch_async(queryQueue,
-    ^{
-        NSString *query = [NSString stringWithFormat:@"SELECT * FROM stopinfo where time_stop > %f AND time_stop < %f;",startTime,endTime];
-        FMResultSet *results = [sfDb executeQuery:query];
+#pragma mark - Popover delegate
 
-        // Merge the results together by stop
-        StopAccumulatorGroup stopGroup;
-        stopGroup.accumulateStops(results);
-        
-        // Look for the maximum pass_on,off
-        int max_total=0;
-//        for (StopAccumulatorSet::iterator it = stopGroup.stopSet.begin();
-//             it != stopGroup.stopSet.end(); ++it)
-//        {
-//            max_pass_on = std::max(max_pass_on,(int)(*it)->pass_on);
-//            max_pass_off = std::max(max_pass_off,(int)(*it)->pass_off);
-//            max_total = std::max(max_pass_on+max_pass_off,max_total);
-//        }
-        // Note: Scaling it each time is goofy
-        max_total = 5000;
-        
-        // Cylinder colors
-        UIColor *onColor = [UIColor colorWithRed:79/255.0 green:16/255.0 blue:173/255.0 alpha:1.0];
-        UIColor *offColor = [UIColor colorWithRed:225/255.0 green:0.0 blue:76/255.0 alpha:1.0];
-        
-        // Work through the stop results, one by one
-    //    int numStops = stopGroup.stopSet.size();
-        NSMutableArray *shapes = [NSMutableArray array];
-        for (StopAccumulatorSet::iterator it = stopGroup.stopSet.begin();
-             it != stopGroup.stopSet.end(); ++it)
+- (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController
+{
+    if (routeSelector)
+    {
+//        dataSet.selectedRoutes = routeSelector->enables;
+    } else if (dataFieldSelector)
+    {
+        if (dataSet)
         {
-            StopAccumulator *stop = *it;
-    //        int total = stop->pass_on+stop->pass_off;
-            float disp_on = stop->pass_on / max_total * MaxCylinderHeight;
-            float disp_off = stop->pass_off / max_total * MaxCylinderHeight;
-            
-            // Passengers getting on at the stop (displayed at the bottom)
-            if (disp_on > 0)
-            {
-                MaplyShapeCylinder *cyl = [[MaplyShapeCylinder alloc] init];
-                // Note: Lon is flipped
-                cyl.baseCenter = MaplyCoordinateMakeWithDegrees(-stop->lon, stop->lat);
-                cyl.baseHeight = CylinderOffset;
-                cyl.radius = MaxCylinderRadius;
-                cyl.height = disp_on;
-                cyl.color = onColor;
-                [shapes addObject:cyl];
-            }
-            // Passengers getting off at the stop (displayed at the top)
-            if (disp_off > 0)
-            {
-                MaplyShapeCylinder *cyl = [[MaplyShapeCylinder alloc] init];
-                // Note: lon is flipped
-                cyl.baseCenter = MaplyCoordinateMakeWithDegrees(-stop->lon, stop->lat);
-                cyl.baseHeight = disp_on+CylinderOffset;
-                cyl.radius = MaxCylinderRadius;
-                cyl.height = disp_off;
-                cyl.color = offColor;
-                [shapes addObject:cyl];
-            }
+            dataSet.selectedField = dataFieldSelector->selected;
         }
-        
-        dispatch_async(dispatch_get_main_queue(),
-                       ^{
-                           [baseViewC setShapeDesc:@{kMaplyColor: [UIColor redColor]}];
-                           shapesObj = [baseViewC addShapes:shapes];
-                           [baseViewC setShapeDesc:@{kMaplyColor: [NSNull null]}];
-
-                           [rangeSelect setAlpha:1.0];
-                           [rangeSelect setUserInteractionEnabled:YES];
-                           [segControl setAlpha:1.0];
-                           [segControl setUserInteractionEnabled:YES];
-                       });
-    });
+    }
+    
+    routeSelector = nil;
+    dataFieldSelector = nil;
+    popControl = nil;
+    
+    [self performSelector:@selector(updateDisplay) withObject:nil afterDelay:0.0];
 }
 
 @end
