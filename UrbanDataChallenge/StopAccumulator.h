@@ -11,6 +11,7 @@
 
 #include <set>
 #include <vector>
+#import <string>
 #import "FMDatabase.h"
 #import "WhirlyGlobeComponent.h"
 
@@ -47,12 +48,13 @@ typedef std::set<StopAccumulator *,StopAccumulatorCmp> StopAccumulatorSet;
 class StopAccumulatorGroup
 {
 public:
-    StopAccumulatorGroup(MaplyVectorObject *stops,NSString *queryField);
+    StopAccumulatorGroup(MaplyVectorObject *stops,NSString *queryField,const std::set<std::string> &validRoutes);
     ~StopAccumulatorGroup();
     
     // Run the accumulation over the results of a query
     bool accumulateStops(FMResultSet *results);
-    
+
+    std::set<std::string> validRoutes;
     NSString *queryField;
     StopAccumulatorSet stopSet;
 };

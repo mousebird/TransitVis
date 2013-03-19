@@ -6,6 +6,7 @@
 //  Copyright (c) 2013 mousebird consulting. All rights reserved.
 //
 
+#import <string>
 #import "TransitDataSet.h"
 #import "StopAccumulator.h"
 
@@ -13,6 +14,16 @@
 @end
 
 @implementation TransitDataSet
+{
+    // Set if we're displaying the routes
+    MaplyComponentObject *routeObj;
+    
+    // Set if we're displaying the results of a query
+    MaplyComponentObject *shapesObj,*labelsObj;
+    
+    // We'll run the queries on this dispatch queue
+    dispatch_queue_t queryQueue;    
+}
 
 - (id)initWithDB:(NSString *)dbName routes:(NSString *)routeName stops:(NSString *)stopName viewC:(MaplyBaseViewController *)inViewC
 {
@@ -37,7 +48,7 @@
     // Let's figure out what all the routes are
     {
         NSMutableArray *routeNames = [NSMutableArray array];
-        FMResultSet *results = [db executeQuery:@"SELECT distinct route from stopinfo;"];
+        FMResultSet *results = [db executeQuery:@"SELECT distinct route from stopinfo order by route;"];
         while ([results next])
         {
             NSString *routeStr = [results stringForColumn:@"route"];
@@ -106,6 +117,9 @@
     if (shapesObj)
         [viewC removeObject:shapesObj];
     shapesObj = nil;
+    if (labelsObj)
+        [viewC removeObject:labelsObj];
+    labelsObj = nil;
 }
 
 static const float MaxCylinderRadius = 0.000002;
@@ -122,7 +136,20 @@ static const float CylinderOffset = 0.000001;
     if (shapesObj)
         [viewC removeObject:shapesObj];
     shapesObj = nil;
-        
+    
+    // Assemble a list of routes we can search on
+    std::set<std::string> validRoutes;
+    for (unsigned int ii=0;ii<[routes count];ii++)
+    {
+        NSString *routeName = [routes objectAtIndex:ii];
+        if (!_routeEnables || [[_routeEnables objectAtIndex:ii] boolValue])
+        {
+            std::string str = [routeName cStringUsingEncoding:NSASCIIStringEncoding];
+            if (!str.empty())
+                validRoutes.insert(str);
+        }
+    }
+    
 //    [rangeSelect setAlpha:0.2];
 //    [rangeSelect setUserInteractionEnabled:NO];
 //    [segControl setAlpha:0.2];
@@ -134,7 +161,7 @@ static const float CylinderOffset = 0.000001;
                        FMResultSet *results = [db executeQuery:query];
                        
                        // Merge the results together by stop
-                       StopAccumulatorGroup stopGroup(stopVec,_selectedField->rawFieldName);
+                       StopAccumulatorGroup stopGroup(stopVec,_selectedField->rawFieldName,validRoutes);
                        stopGroup.accumulateStops(results);
                        
                        // Look for the maximum pass_on,off
@@ -152,11 +179,12 @@ static const float CylinderOffset = 0.000001;
                        // Cylinder colors
 //                       UIColor *onColor = [UIColor colorWithRed:79/255.0 green:16/255.0 blue:173/255.0 alpha:1.0];
 //                       UIColor *offColor = [UIColor colorWithRed:225/255.0 green:0.0 blue:76/255.0 alpha:1.0];
-                       UIColor *cylColor = [UIColor colorWithRed:225/255.0 green:0.0 blue:76/255.0 alpha:1.0];
+//                       UIColor *cylColor = [UIColor colorWithRed:225/255.0 green:0.0 blue:76/255.0 alpha:1.0];
                        
                        // Work through the stop results, one by one
                        //    int numStops = stopGroup.stopSet.size();
                        NSMutableArray *shapes = [NSMutableArray array];
+                       NSMutableArray *labels = [NSMutableArray array];
                        for (StopAccumulatorSet::iterator it = stopGroup.stopSet.begin();
                             it != stopGroup.stopSet.end(); ++it)
                        {
@@ -201,6 +229,11 @@ static const float CylinderOffset = 0.000001;
                                cyl.height = disp_val;
 //                               cyl.color = cylColor;
                                [shapes addObject:cyl];
+                               
+                               MaplyScreenLabel *label = [[MaplyScreenLabel alloc] init];
+                               label.loc = stop->coord;
+                               label.text = [NSString stringWithFormat:@"%.2f",stop->value];
+                               [labels addObject:label];
                            }
                        }
                        
@@ -209,6 +242,9 @@ static const float CylinderOffset = 0.000001;
                                           [viewC setShapeDesc:@{kMaplyColor: [UIColor redColor]}];
                                           shapesObj = [viewC addShapes:shapes];
                                           [viewC setShapeDesc:@{kMaplyColor: [NSNull null]}];
+                                          [viewC setScreenLabelDesc:@{kMaplyTextColor: [UIColor whiteColor], kMaplyShadowColor: [UIColor blackColor], kMaplyLabelHeight: @(10.0)}];
+                                          labelsObj = [viewC addScreenLabels:labels];
+                                          [viewC setScreenLabelDesc:@{kMaplyTextColor: [NSNull null], kMaplyShadowColor: [NSNull null], kMaplyLabelHeight: [NSNull null]}];
                                           
 //                                          [rangeSelect setAlpha:1.0];
 //                                          [rangeSelect setUserInteractionEnabled:YES];

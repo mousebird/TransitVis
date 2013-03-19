@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		2B25C04F16D96B7600E88346 /* sf_routes.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 2B25C04E16D96B7600E88346 /* sf_routes.geojson */; };
 		2B25C05116D96FA900E88346 /* sf_stops.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 2B25C05016D96FA900E88346 /* sf_stops.geojson */; };
-		2B39C6DB16D8210D00C798CA /* RouteParser.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B39C6DA16D8210D00C798CA /* RouteParser.mm */; };
 		2B61892B16F3C9BE00B7D389 /* sf_transit_tables_1_4.db in Resources */ = {isa = PBXBuildFile; fileRef = 2B61892A16F3C9BE00B7D389 /* sf_transit_tables_1_4.db */; };
 		2B61892E16F3CD7A00B7D389 /* TransitDataSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B61892D16F3CD7A00B7D389 /* TransitDataSet.mm */; };
 		2B61893116F3DA2D00B7D389 /* RouteSelector.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B61893016F3DA2D00B7D389 /* RouteSelector.mm */; };
@@ -62,8 +61,6 @@
 /* Begin PBXFileReference section */
 		2B25C04E16D96B7600E88346 /* sf_routes.geojson */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = sf_routes.geojson; path = resources/sf_routes.geojson; sourceTree = SOURCE_ROOT; };
 		2B25C05016D96FA900E88346 /* sf_stops.geojson */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = sf_stops.geojson; path = resources/sf_stops.geojson; sourceTree = SOURCE_ROOT; };
-		2B39C6D916D8210D00C798CA /* RouteParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RouteParser.h; sourceTree = "<group>"; };
-		2B39C6DA16D8210D00C798CA /* RouteParser.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = RouteParser.mm; sourceTree = "<group>"; };
 		2B61892A16F3C9BE00B7D389 /* sf_transit_tables_1_4.db */ = {isa = PBXFileReference; lastKnownFileType = file; name = sf_transit_tables_1_4.db; path = resources/sf_transit_tables_1_4.db; sourceTree = SOURCE_ROOT; };
 		2B61892C16F3CD7A00B7D389 /* TransitDataSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TransitDataSet.h; sourceTree = "<group>"; };
 		2B61892D16F3CD7A00B7D389 /* TransitDataSet.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TransitDataSet.mm; sourceTree = "<group>"; };
@@ -184,8 +181,6 @@
 				2B61893016F3DA2D00B7D389 /* RouteSelector.mm */,
 				2B61893216F3E32300B7D389 /* DataFieldSelector.h */,
 				2B61893316F3E32300B7D389 /* DataFieldSelector.mm */,
-				2B39C6D916D8210D00C798CA /* RouteParser.h */,
-				2B39C6DA16D8210D00C798CA /* RouteParser.mm */,
 				2BA5D51116D33DEA008F39B4 /* StopAccumulator.h */,
 				2BA5D51016D33DEA008F39B4 /* StopAccumulator.mm */,
 				2B61892C16F3CD7A00B7D389 /* TransitDataSet.h */,
@@ -370,7 +365,6 @@
 				2BA5D50F16D33BB6008F39B4 /* FMResultSet.m in Sources */,
 				2BA5D51216D33DEA008F39B4 /* StopAccumulator.mm in Sources */,
 				2BB41BAF16D3F1B900FD8F90 /* ACVRangeSelector.m in Sources */,
-				2B39C6DB16D8210D00C798CA /* RouteParser.mm in Sources */,
 				2B61892E16F3CD7A00B7D389 /* TransitDataSet.mm in Sources */,
 				2B61893116F3DA2D00B7D389 /* RouteSelector.mm in Sources */,
 				2B61893416F3E32300B7D389 /* DataFieldSelector.mm in Sources */,

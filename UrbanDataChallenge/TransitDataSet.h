@@ -41,17 +41,7 @@
     NSArray *dataFields;
     
     // Names of all the transit routes.  These are strings.
-    NSArray *routes;
-    
-@private    
-    // Set if we're displaying the routes
-    MaplyComponentObject *routeObj;
-
-    // Set if we're displaying the results of a query
-    MaplyComponentObject *shapesObj;
-    
-    // We'll run the queries on this dispatch queue
-    dispatch_queue_t queryQueue;
+    NSArray *routes;    
 }
 
 // Initialize with the database name, route name (geojson file) and view controller

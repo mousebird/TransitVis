@@ -6,11 +6,12 @@
 //  Copyright (c) 2013 mousebird consulting. All rights reserved.
 //
 
+#import <string>
 #include "StopAccumulator.h"
 
 // Construct with the vectors for the stops
-StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSString *queryField)
-: queryField(queryField)
+StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSString *queryField,const std::set<std::string> &validRoutes)
+: queryField(queryField), validRoutes(validRoutes)
 {
     NSArray *stops = [stopsVec splitVectors];
     for (MaplyVectorObject *stop in stops)
@@ -41,6 +42,11 @@ bool StopAccumulatorGroup::accumulateStops(FMResultSet *results)
         StopAccumulator stop;
         stop.stop_id = [results intForColumn:@"stop_id"];
         stop.value = (float)[results doubleForColumn:queryField];
+
+        // This needs to be on a route we care about
+        std::string routeStr = [[results stringForColumn:@"route"] cStringUsingEncoding:NSASCIIStringEncoding];
+        if (validRoutes.find(routeStr) == validRoutes.end())
+            continue;
         
         StopAccumulatorSet::iterator existingIt = stopSet.find(&stop);
         if (existingIt != stopSet.end())

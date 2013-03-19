@@ -31,7 +31,6 @@
     // Data range selector
     IBOutlet ACVRangeSelector *rangeSelect;
     IBOutlet UILabel *startLabel,*endLabel;
-    IBOutlet UISlider *tiltSlider;
     IBOutlet UISegmentedControl *segControl;
     // Currently active data set
     TransitDataSet *dataSet;
@@ -69,7 +68,8 @@ static const float RangeHeight = 80.0;
     
     // Start up over San Francisco, center of the universe
     globeViewC.height = 0.001;
-    [globeViewC animateToPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793) time:1.0];
+    [globeViewC setTiltMinHeight:0.000227609242 maxHeight:0.00334425364 minTilt:1.21771169 maxTilt:0.0];
+    [globeViewC setPosition:MaplyCoordinateMakeWithDegrees(-122.4192, 37.7793)];
     
     // For network paging layers, where we'll store temp files
     NSString *cacheDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES)  objectAtIndex:0];
@@ -105,12 +105,6 @@ static const float RangeHeight = 80.0;
     [rangeSelect addTarget:self action:@selector(rangeSelectChanged:) forControlEvents:UIControlEventAllEvents];
     [rangeSelect addTarget:self action:@selector(rangeSelectChangeDone:) forControlEvents:UIControlEventTouchUpInside];
     [self rangeSelectChanged:self];
-
-    // Configure the tilt slider
-    CGAffineTransform trans = CGAffineTransformMakeRotation(M_PI * 0.5);
-    tiltSlider.transform = trans;
-    [tiltSlider addTarget:self action:@selector(tiltChanged:) forControlEvents:UIControlEventAllEvents];
-    tiltSlider.value = 0.0;
     
     // Configure the segment control
     [segControl removeAllSegments];
@@ -149,12 +143,6 @@ static const float RangeHeight = 80.0;
     endLabel.text = [NSString stringWithFormat:@"%.2d:%.2d",endHour,endMin % 60];
 }
 
-- (void)tiltChanged:(id)sender
-{
-    float newTilt = tiltSlider.value * M_PI/2;
-    [globeViewC setTilt:newTilt];
-}
-
 - (void)rangeSelectChangeDone:(id)sender
 {
     [self performSelector:@selector(updateDisplay) withObject:nil afterDelay:0.0];
@@ -174,6 +162,8 @@ static const float RangeHeight = 80.0;
     
     UITableViewController *tableViewC = [[UITableViewController alloc] initWithStyle:UITableViewStylePlain];
     routeSelector = [[RouteSelector alloc] initWithRoutes:dataSet->routes];
+    if (dataSet.routeEnables)
+        routeSelector->enables = [NSMutableArray arrayWithArray:dataSet.routeEnables];
     tableViewC.tableView.dataSource = routeSelector;
     tableViewC.tableView.delegate = routeSelector;
 
@@ -203,7 +193,7 @@ static const float RangeHeight = 80.0;
 {
     if (routeSelector)
     {
-//        dataSet.selectedRoutes = routeSelector->enables;
+        dataSet.routeEnables = routeSelector->enables;
     } else if (dataFieldSelector)
     {
         if (dataSet)
