@@ -26,7 +26,7 @@ public:
         value = that.value;
     }
     // Unique stop ID
-    int stop_id;
+    std::string stop_id;
     // Location on the map
     MaplyCoordinate coord;
     // Values we're accumulating for now

@@ -12,15 +12,16 @@
 
 // Info about a single query-able field in the main table
 @interface TransitDataField : NSObject
-{
-@public
-    // The raw name we can use for queries
-    NSString *rawFieldName;
-    // A friendly name to display to users
-    NSString *displayFieldName;
-    // A user friendly description of the field
-    NSString *fieldDesc;
-}
+
+// The raw name we can use for queries
+@property(nonatomic) NSString *rawFieldName;
+// A friendly name to display to users
+@property(nonatomic) NSString *displayFieldName;
+// A user friendly description of the field
+@property(nonatomic) NSString *fieldDesc;
+// Units, used for comparison
+@property(nonatomic) NSString *units;
+
 @end
 
 /* Encapsulates a single transit data set and queries we can make against it.
@@ -41,7 +42,15 @@
     NSArray *dataFields;
     
     // Names of all the transit routes.  These are strings.
-    NSArray *routes;    
+    NSArray *routes;
+
+    // Bounding box of stops
+    MaplyCoordinate ll,ur;
+    
+    // Set if we're doing autoscale
+    bool autoScale;
+    // Used if we're not doing autoscale, or set to the last scale calculation
+    float scale;
 }
 
 // Initialize with the database name, route name (geojson file) and view controller

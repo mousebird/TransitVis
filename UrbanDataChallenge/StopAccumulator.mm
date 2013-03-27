@@ -18,9 +18,15 @@ StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSString 
     {
         StopAccumulator *theStop = new StopAccumulator();
         theStop->coord = [stop center];
-        theStop->stop_id = [stop.attributes[@"STOPID"] intValue];
-        theStop->value = 0.0;
-        stopSet.insert(theStop);
+        NSString *stopStr = nil;
+        if (!(stopStr = [stop.attributes[@"STOPID"] stringValue]))
+            stopStr = stop.attributes[@"stopCode"];
+        if (stopStr)
+        {
+            theStop->stop_id = [stopStr cStringUsingEncoding:NSASCIIStringEncoding];
+            theStop->value = 0.0;
+            stopSet.insert(theStop);
+        }
     }
 }
 
@@ -40,7 +46,7 @@ bool StopAccumulatorGroup::accumulateStops(FMResultSet *results)
     while ([results next])
     {
         StopAccumulator stop;
-        stop.stop_id = [results intForColumn:@"stop_id"];
+        stop.stop_id = [[results stringForColumn:@"stop_id"] cStringUsingEncoding:NSASCIIStringEncoding];
         stop.value = (float)[results doubleForColumn:queryField];
 
         // This needs to be on a route we care about

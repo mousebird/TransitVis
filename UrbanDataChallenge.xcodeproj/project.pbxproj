@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2B25C04F16D96B7600E88346 /* sf_routes.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 2B25C04E16D96B7600E88346 /* sf_routes.geojson */; };
-		2B25C05116D96FA900E88346 /* sf_stops.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 2B25C05016D96FA900E88346 /* sf_stops.geojson */; };
-		2B61892B16F3C9BE00B7D389 /* sf_transit_tables_1_4.db in Resources */ = {isa = PBXBuildFile; fileRef = 2B61892A16F3C9BE00B7D389 /* sf_transit_tables_1_4.db */; };
+		2B08E1D816FA1A650084441D /* LoadableTransitDataSet.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B08E1D716FA1A640084441D /* LoadableTransitDataSet.m */; };
+		2B08E1E316FA58800084441D /* settings.png in Resources */ = {isa = PBXBuildFile; fileRef = 2B08E1E216FA58800084441D /* settings.png */; };
+		2B08E1E616FA5C110084441D /* DataSetSelector.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B08E1E516FA5C110084441D /* DataSetSelector.m */; };
 		2B61892E16F3CD7A00B7D389 /* TransitDataSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B61892D16F3CD7A00B7D389 /* TransitDataSet.mm */; };
 		2B61893116F3DA2D00B7D389 /* RouteSelector.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B61893016F3DA2D00B7D389 /* RouteSelector.mm */; };
 		2B61893416F3E32300B7D389 /* DataFieldSelector.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2B61893316F3E32300B7D389 /* DataFieldSelector.mm */; };
@@ -59,9 +59,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2B25C04E16D96B7600E88346 /* sf_routes.geojson */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = sf_routes.geojson; path = resources/sf_routes.geojson; sourceTree = SOURCE_ROOT; };
-		2B25C05016D96FA900E88346 /* sf_stops.geojson */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = sf_stops.geojson; path = resources/sf_stops.geojson; sourceTree = SOURCE_ROOT; };
-		2B61892A16F3C9BE00B7D389 /* sf_transit_tables_1_4.db */ = {isa = PBXFileReference; lastKnownFileType = file; name = sf_transit_tables_1_4.db; path = resources/sf_transit_tables_1_4.db; sourceTree = SOURCE_ROOT; };
+		2B08E1D616FA1A640084441D /* LoadableTransitDataSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoadableTransitDataSet.h; sourceTree = "<group>"; };
+		2B08E1D716FA1A640084441D /* LoadableTransitDataSet.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LoadableTransitDataSet.m; sourceTree = "<group>"; };
+		2B08E1E216FA58800084441D /* settings.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = settings.png; path = resources/settings.png; sourceTree = SOURCE_ROOT; };
+		2B08E1E416FA5C100084441D /* DataSetSelector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DataSetSelector.h; sourceTree = "<group>"; };
+		2B08E1E516FA5C110084441D /* DataSetSelector.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DataSetSelector.m; sourceTree = "<group>"; };
 		2B61892C16F3CD7A00B7D389 /* TransitDataSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TransitDataSet.h; sourceTree = "<group>"; };
 		2B61892D16F3CD7A00B7D389 /* TransitDataSet.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TransitDataSet.mm; sourceTree = "<group>"; };
 		2B61892F16F3DA2D00B7D389 /* RouteSelector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RouteSelector.h; sourceTree = "<group>"; };
@@ -179,10 +181,14 @@
 				2BA5D4CC16D3352A008F39B4 /* AppDelegate.mm */,
 				2B61892F16F3DA2D00B7D389 /* RouteSelector.h */,
 				2B61893016F3DA2D00B7D389 /* RouteSelector.mm */,
+				2B08E1E416FA5C100084441D /* DataSetSelector.h */,
+				2B08E1E516FA5C110084441D /* DataSetSelector.m */,
 				2B61893216F3E32300B7D389 /* DataFieldSelector.h */,
 				2B61893316F3E32300B7D389 /* DataFieldSelector.mm */,
 				2BA5D51116D33DEA008F39B4 /* StopAccumulator.h */,
 				2BA5D51016D33DEA008F39B4 /* StopAccumulator.mm */,
+				2B08E1D616FA1A640084441D /* LoadableTransitDataSet.h */,
+				2B08E1D716FA1A640084441D /* LoadableTransitDataSet.m */,
 				2B61892C16F3CD7A00B7D389 /* TransitDataSet.h */,
 				2B61892D16F3CD7A00B7D389 /* TransitDataSet.mm */,
 				2BA5D4DA16D33574008F39B4 /* MainViewController.h */,
@@ -219,9 +225,7 @@
 		2BA5D4F116D33971008F39B4 /* resources */ = {
 			isa = PBXGroup;
 			children = (
-				2B61892A16F3C9BE00B7D389 /* sf_transit_tables_1_4.db */,
-				2B25C05016D96FA900E88346 /* sf_stops.geojson */,
-				2B25C04E16D96B7600E88346 /* sf_routes.geojson */,
+				2B08E1E216FA58800084441D /* settings.png */,
 			);
 			name = resources;
 			sourceTree = "<group>";
@@ -342,9 +346,7 @@
 				2BB41BE016D4883100FD8F90 /* MainViewController.xib in Resources */,
 				2BD298F616D589F00097655E /* Icon72.png in Resources */,
 				2BD298F816D589F50097655E /* Icon144.png in Resources */,
-				2B25C04F16D96B7600E88346 /* sf_routes.geojson in Resources */,
-				2B25C05116D96FA900E88346 /* sf_stops.geojson in Resources */,
-				2B61892B16F3C9BE00B7D389 /* sf_transit_tables_1_4.db in Resources */,
+				2B08E1E316FA58800084441D /* settings.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -368,6 +370,8 @@
 				2B61892E16F3CD7A00B7D389 /* TransitDataSet.mm in Sources */,
 				2B61893116F3DA2D00B7D389 /* RouteSelector.mm in Sources */,
 				2B61893416F3E32300B7D389 /* DataFieldSelector.mm in Sources */,
+				2B08E1D816FA1A650084441D /* LoadableTransitDataSet.m in Sources */,
+				2B08E1E616FA5C110084441D /* DataSetSelector.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

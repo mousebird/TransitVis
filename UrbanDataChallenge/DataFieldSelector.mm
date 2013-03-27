@@ -47,8 +47,8 @@
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"fieldCell"];
     
     TransitDataField *field = [fields objectAtIndex:indexPath.row];
-    cell.textLabel.text = field->displayFieldName;
-    cell.detailTextLabel.text = field->fieldDesc;
+    cell.textLabel.text = field.displayFieldName;
+    cell.detailTextLabel.text = field.fieldDesc;
     cell.detailTextLabel.numberOfLines = 0;
 
     cell.accessoryType = (field == selected) ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
