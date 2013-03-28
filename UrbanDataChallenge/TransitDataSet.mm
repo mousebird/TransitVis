@@ -13,6 +13,9 @@
 @implementation TransitDataField
 @end
 
+@implementation TransitStopInfo
+@end
+
 @implementation TransitDataSet
 {
     // Set if we're displaying the routes
@@ -127,6 +130,35 @@
     labelsObj = nil;
 }
 
+// Pass back info about the given stop
+- (TransitStopInfo *)infoForStop:(NSString *)stopId
+{
+    // Note: This will be slow
+    NSArray *stops = [stopVec splitVectors];
+    MaplyVectorObject *found = nil;
+    for (MaplyVectorObject *stop in stops)
+    {
+        NSString *stopStr = [stop.attributes[@"STOPID"] stringValue];
+        if (!stopStr)
+            stopStr = stop.attributes[@"stopCode"];
+        if (stopStr && ![stopStr compare:stopId])
+        {
+            found = stop;
+            break;
+        }
+    }
+    if (!found)
+        return nil;
+    
+    TransitStopInfo *stopInfo = [[TransitStopInfo alloc] init];
+    stopInfo.stopId = stopId;
+    stopInfo.stopName = found.attributes[@"STOPNAME"];
+    if (!stopInfo.stopName)
+        stopInfo.stopName = found.attributes[@"stopName"];
+    
+    return stopInfo;
+}
+
 static const float MaxCylinderRadius = 0.000002;
 static const float MaxCylinderHeight = 0.0005;
 static const float CylinderOffset = 0.000001;
@@ -230,8 +262,12 @@ static const float CylinderOffset = 0.000001;
            cyl.baseHeight = CylinderOffset;
            cyl.radius = MaxCylinderRadius;
            cyl.height = disp_val;
+//           cyl.selectable = true;
+           cyl.userObject = [NSString stringWithFormat:@"%s",stop->stop_id.c_str()];
     //                               cyl.color = cylColor;
-           [shapes addObject:cyl];
+           // Note: Debugging
+//           if ([shapes count] == 0)
+               [shapes addObject:cyl];
            
     //                               MaplyScreenLabel *label = [[MaplyScreenLabel alloc] init];
     //                               label.loc = stop->coord;

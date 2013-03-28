@@ -24,6 +24,18 @@
 
 @end
 
+// Information about a specific stop related to the current query
+@interface TransitStopInfo : NSObject
+
+// Unique stop ID
+@property(nonatomic) NSString *stopId;
+// User friendly stop name
+@property(nonatomic) NSString *stopName;
+// Dictionary of values related to the active query
+@property(nonatomic) NSDictionary *values;
+
+@end
+
 /* Encapsulates a single transit data set and queries we can make against it.
  */
 @interface TransitDataSet : NSObject
@@ -67,6 +79,9 @@
 
 // Run the simple query.  Obviously more to this soon.
 - (void)runQueryFrom:(NSTimeInterval)startTime to:(NSTimeInterval)endTime;
+
+// Info for the given stop
+- (TransitStopInfo *)infoForStop:(NSString *)stopId;
 
 // Clear out everything we're displaying
 - (void)shutdown;

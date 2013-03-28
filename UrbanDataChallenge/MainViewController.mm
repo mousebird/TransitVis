@@ -56,6 +56,8 @@
     
     // Set if we're doing autoscale on the data results
     bool autoScale;
+    
+    UIView *selectView;
 }
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
@@ -218,6 +220,8 @@ static const float RangeHeight = 80.0;
 // Load the given data set into memory.  Clear out one if it's already there.
 - (void)loadDataSet:(LoadableTransitDataSet *)toLoad
 {
+    [self clearSelection];
+    
     [self setMessage:[NSString stringWithFormat:@"Loading %@",toLoad.name]];
     
     if (dataSet)
@@ -257,6 +261,8 @@ static const float RangeHeight = 80.0;
 
 - (void)updateDisplay
 {
+    [self clearSelection];
+    
     int dayOfWeek = segControl.selectedSegmentIndex;
     NSTimeInterval timeOffset = dayOfWeek * 24 * 60* 60;
     NSTimeInterval startTime = rangeSelect.leftValue + timeOffset;
@@ -456,6 +462,68 @@ static const float RangeHeight = 80.0;
             [popNavC pushViewController:tableViewC animated:YES];
         }
             break;
+    }
+}
+
+#pragma mark - WhirlyGlobe delegate
+
+static const float MarginWidth = 10.0;
+static const float MarginHeight = 4.0;
+
+// Construct a view used for selection display
+- (UIView *)makeSelectView:(TransitStopInfo *)stopInfo
+{
+    UIView *topView = [[UIView alloc] init];
+    topView.backgroundColor = [UIColor grayColor];
+    UILabel *label = [[UILabel alloc] init];
+    label.font = [UIFont boldSystemFontOfSize:12.0];
+    label.text = stopInfo.stopName;
+    CGSize textSize = [label.text sizeWithFont:label.font];
+    label.frame = CGRectMake(MarginWidth,MarginHeight,textSize.width,textSize.height);
+    label.backgroundColor = [UIColor clearColor];
+    label.textColor = [UIColor whiteColor];
+
+    topView.layer.cornerRadius = 9.0;
+    topView.layer.masksToBounds = YES;
+    topView.layer.borderColor = [UIColor grayColor].CGColor;
+    [topView addSubview:label];
+    topView.frame = CGRectMake(0,0,label.frame.size.width+2*MarginWidth,label.frame.size.height+2*MarginHeight);
+    topView.hidden = YES;
+    [self.view addSubview:topView];
+    
+    return topView;
+}
+
+- (void)clearSelection
+{
+    if (selectView)
+    {
+        [baseViewC removeViewTrackForView:selectView];
+        [selectView removeFromSuperview];
+        selectView = nil;
+    }
+}
+
+- (void)globeViewController:(WhirlyGlobeViewController *)viewC didSelect:(NSObject *)selectedObj atLoc:(WGCoordinate)coord onScreen:(CGPoint)screenPt
+{
+    [self clearSelection];
+    
+    if ([selectedObj isKindOfClass:[MaplyShapeCylinder class]])
+    {
+        MaplyShapeCylinder *cyl = (MaplyShapeCylinder *)selectedObj;
+        if ([cyl.userObject isKindOfClass:[NSString class]])
+        {
+            NSString *stopId = (NSString *)cyl.userObject;
+            TransitStopInfo *stopInfo = [dataSet infoForStop:stopId];
+            if (stopInfo)
+            {
+                selectView = [self makeSelectView:stopInfo];
+                MaplyViewTracker *viewTrack = [[MaplyViewTracker alloc] init];
+                viewTrack.view = selectView;
+                viewTrack.loc = cyl.baseCenter;
+                [baseViewC addViewTracker:viewTrack];
+            }
+        }
     }
 }
 
