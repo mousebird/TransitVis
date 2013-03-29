@@ -10,8 +10,8 @@
 #include "StopAccumulator.h"
 
 // Construct with the vectors for the stops
-StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSString *queryField,const std::set<std::string> &validRoutes)
-: queryField(queryField), validRoutes(validRoutes)
+StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSArray *queryFields,const std::set<std::string> &validRoutes)
+: queryFields(queryFields), validRoutes(validRoutes)
 {
     NSArray *stops = [stopsVec splitVectors];
     for (MaplyVectorObject *stop in stops)
@@ -24,7 +24,8 @@ StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSString 
         if (stopStr)
         {
             theStop->stop_id = [stopStr cStringUsingEncoding:NSASCIIStringEncoding];
-            theStop->value = 0.0;
+            for (unsigned int ii=0;ii<[queryFields count];ii++)
+                theStop->values.push_back(0.0);
             stopSet.insert(theStop);
         }
     }
@@ -46,8 +47,10 @@ bool StopAccumulatorGroup::accumulateStops(FMResultSet *results)
     while ([results next])
     {
         StopAccumulator stop;
+        stop.values.resize([queryFields count]);
         stop.stop_id = [[results stringForColumn:@"stop_id"] cStringUsingEncoding:NSASCIIStringEncoding];
-        stop.value = (float)[results doubleForColumn:queryField];
+        for (unsigned int ii=0;ii<[queryFields count];ii++)
+            stop.values[ii] = (float)[results doubleForColumn:[queryFields objectAtIndex:ii]];
 
         // This needs to be on a route we care about
         std::string routeStr = [[results stringForColumn:@"route"] cStringUsingEncoding:NSASCIIStringEncoding];
@@ -59,7 +62,8 @@ bool StopAccumulatorGroup::accumulateStops(FMResultSet *results)
         {
             // Already one there
             StopAccumulator *existStop = *existingIt;
-            existStop->value += stop.value;
+            for (unsigned int ii=0;ii<existStop->values.size();ii++)
+                existStop->values[ii] += stop.values[ii];
         } else {
             // Note: For some reason we have orphan bus stops
 //            StopAccumulator *newStop = new StopAccumulator(stop);

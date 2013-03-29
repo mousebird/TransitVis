@@ -75,10 +75,13 @@
 @property (nonatomic,strong) NSArray *routeEnables;
 
 // Set this to field we want displayed
-@property (nonatomic,strong) TransitDataField *selectedField;
+@property (nonatomic,strong) NSMutableArray *selectedFields;
+
+// Colors we'll use for the cylinders.
+@property (nonatomic,strong) NSArray *colors;
 
 // Run the simple query.  Obviously more to this soon.
-- (void)runQueryFrom:(NSTimeInterval)startTime to:(NSTimeInterval)endTime;
+- (NSAttributedString *)runQueryFrom:(NSTimeInterval)startTime to:(NSTimeInterval)endTime;
 
 // Info for the given stop
 - (TransitStopInfo *)infoForStop:(NSString *)stopId;

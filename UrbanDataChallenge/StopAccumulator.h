@@ -23,14 +23,14 @@ public:
     StopAccumulator(const StopAccumulator &that)
     {
         stop_id = that.stop_id;  coord = that.coord;
-        value = that.value;
+        values = that.values;
     }
     // Unique stop ID
     std::string stop_id;
     // Location on the map
     MaplyCoordinate coord;
     // Values we're accumulating for now
-    float value;
+    std::vector<float> values;
 };
 
 // Comparator for pointers
@@ -48,14 +48,14 @@ typedef std::set<StopAccumulator *,StopAccumulatorCmp> StopAccumulatorSet;
 class StopAccumulatorGroup
 {
 public:
-    StopAccumulatorGroup(MaplyVectorObject *stops,NSString *queryField,const std::set<std::string> &validRoutes);
+    StopAccumulatorGroup(MaplyVectorObject *stops,NSArray *queryFields,const std::set<std::string> &validRoutes);
     ~StopAccumulatorGroup();
     
     // Run the accumulation over the results of a query
     bool accumulateStops(FMResultSet *results);
 
     std::set<std::string> validRoutes;
-    NSString *queryField;
+    NSArray *queryFields;
     StopAccumulatorSet stopSet;
 };
 

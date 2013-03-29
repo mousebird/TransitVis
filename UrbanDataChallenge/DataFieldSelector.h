@@ -9,15 +9,15 @@
 #import <UIKit/UIKit.h>
 #import "TransitDataSet.h"
 
+// Table data source and delegate for selecting data fields to view
 @interface DataFieldSelector : NSObject <UITableViewDataSource,UITableViewDelegate>
-{
-@public
-    // Array of TransitDataField objects
-    NSArray *fields;
-    TransitDataField *selected;
-}
 
-// Initialize with data fields
-- (id)initWithDataFields:(NSArray *)inFields;
+// Array of TransitDataField objects
+@property (nonatomic) NSArray *fields;
+// Ones we've selected and in which order
+@property (nonatomic) NSMutableArray *selections;
+
+// Initialize with data fields and colors to display them with
+- (id)initWithDataFields:(NSArray *)inFields colors:(NSArray *)colors;
 
 @end

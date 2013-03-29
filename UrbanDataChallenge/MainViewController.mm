@@ -39,6 +39,8 @@
     IBOutlet UIButton *autoScaleButton;
     IBOutlet UIButton *settingsButton;
     IBOutlet UIView *controlView;
+    IBOutlet UIButton *leftButton,*rightButton;
+    IBOutlet UILabel *displayLabel;
     
     // Data sets we could load
     NSArray *loadableDataSets;
@@ -56,6 +58,9 @@
     
     // Set if we're doing autoscale on the data results
     bool autoScale;
+    
+    // Colors we use for data field display
+    NSArray *dataFieldColors;
     
     UIView *selectView;
 }
@@ -81,6 +86,7 @@ static const float RangeHeight = 80.0;
     // Create a globe
     globeViewC = [[WhirlyGlobeViewController alloc] init];
     globeViewC.delegate = self;
+    globeViewC.autoMoveToTap = false;
     baseViewC = globeViewC;
     // Wire it into the view/controller hierarchy
     [self.view insertSubview:baseViewC.view atIndex:0];
@@ -112,6 +118,9 @@ static const float RangeHeight = 80.0;
     autoScaleButton.layer.masksToBounds = YES;
     autoScaleButton.layer.borderColor = [UIColor grayColor].CGColor;
     [self autoScaleAction:autoScaleButton];
+    
+    // Colors used in data field display
+    dataFieldColors = @[[UIColor redColor],[UIColor colorWithRed:0.25 green:0.25 blue:1.0 alpha:1.0],[UIColor greenColor]];
 
     // Look for data sets
     loadableDataSets = [LoadableTransitDataSet FindAllDataSets];
@@ -125,6 +134,9 @@ static const float RangeHeight = 80.0;
     messageLabel.layer.cornerRadius = 9.0;
     messageLabel.layer.masksToBounds = YES;
     messageLabel.layer.borderColor = [UIColor grayColor].CGColor;
+    displayLabel.layer.cornerRadius = 9.0;
+    displayLabel.layer.masksToBounds = YES;
+    displayLabel.layer.borderColor = [UIColor grayColor].CGColor;
 
     
     // Configure the slider along the bottom
@@ -163,7 +175,19 @@ static const float RangeHeight = 80.0;
     [segControl insertSegmentWithTitle:@"Saturday" atIndex:5 animated:NO];
     [segControl insertSegmentWithTitle:@"Sunday" atIndex:6 animated:NO];
     segControl.selectedSegmentIndex = 0;
-    [segControl addTarget:self action:@selector(rangeSelectChangeDone:) forControlEvents:UIControlEventValueChanged];    
+    [segControl addTarget:self action:@selector(rangeSelectChangeDone:) forControlEvents:UIControlEventValueChanged];
+    
+    // Note: Obviously fill these in correctly in the future
+    leftButton.enabled = false;
+    leftButton.alpha = 0.25;
+    leftButton.layer.cornerRadius = 9.0;
+    leftButton.layer.masksToBounds = YES;
+    leftButton.layer.borderColor = [UIColor grayColor].CGColor;
+    rightButton.enabled = false;
+    rightButton.alpha = 0.25;
+    rightButton.layer.cornerRadius = 9.0;
+    rightButton.layer.masksToBounds = YES;
+    rightButton.layer.borderColor = [UIColor grayColor].CGColor;
 }
 
 // Display a message
@@ -186,6 +210,27 @@ static const float RangeHeight = 80.0;
      ^{
          messageLabel.alpha = 0.0;
      }];
+}
+
+- (void)setDisplayMessage:(NSAttributedString *)msg
+{
+    displayLabel.attributedText = msg;
+    
+    [UIView animateWithDuration:1.0 animations:
+     ^{
+         displayLabel.alpha = 0.75;
+     }];
+    
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(clearDisplayMessage) object:nil];
+}
+
+- (void)clearDisplayMessage
+{
+    [UIView animateWithDuration:1.0 animations:
+     ^{
+         displayLabel.alpha = 0.0;
+         displayLabel.text = @"";
+     }];    
 }
 
 - (void)disableSettings
@@ -223,6 +268,7 @@ static const float RangeHeight = 80.0;
     [self clearSelection];
     
     [self setMessage:[NSString stringWithFormat:@"Loading %@",toLoad.name]];
+    [self clearDisplayMessage];
     
     if (dataSet)
     {
@@ -240,6 +286,7 @@ static const float RangeHeight = 80.0;
                                       ^{
                                           loadedDataSet = toLoad;
                                           dataSet = newDataSet;
+                                          dataSet.colors = dataFieldColors;
                                           if (dataSet)
                                           {
                                               [self jumpToDataSet];
@@ -251,7 +298,7 @@ static const float RangeHeight = 80.0;
 
                                           if ([dataSet->dataFields count] > 0)
                                           {
-                                              dataSet.selectedField = [dataSet->dataFields objectAtIndex:0];
+                                              dataSet.selectedFields = [NSMutableArray arrayWithObject:[dataSet->dataFields objectAtIndex:0]];
                                               [self performSelector:@selector(updateDisplay) withObject:nil afterDelay:0.0];
                                           }
                                           [self enableSettings];
@@ -271,14 +318,16 @@ static const float RangeHeight = 80.0;
     if (dataSet)
     {
         [self setMessage:@"Running Query"];
+        [self clearDisplayMessage];
         [self disableSettings];
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,0),
                        ^{
-                           [dataSet runQueryFrom:startTime to:endTime];
+                           NSAttributedString *queryMsg = [dataSet runQueryFrom:startTime to:endTime];
                            dispatch_async(dispatch_get_main_queue(),
                                           ^{
-                                               [self enableSettings];
-                                               [self clearMessage];
+                                              [self enableSettings];
+                                              [self clearMessage];
+                                              [self setDisplayMessage:queryMsg];
                                           });
                        });
     }
@@ -375,7 +424,7 @@ static const float RangeHeight = 80.0;
             {
                 if (dataSet)
                 {
-                    dataSet.selectedField = dataFieldSelector->selected;
+//                    dataSet.selectedField = dataFieldSelector->selected;
                 }
             }
         }
@@ -454,8 +503,8 @@ static const float RangeHeight = 80.0;
         case 2:
         {
             UITableViewController *tableViewC = [[UITableViewController alloc] initWithStyle:UITableViewStylePlain];
-            dataFieldSelector = [[DataFieldSelector alloc] initWithDataFields:dataSet->dataFields];
-            dataFieldSelector->selected = dataSet.selectedField;
+            dataFieldSelector = [[DataFieldSelector alloc] initWithDataFields:dataSet->dataFields colors:dataFieldColors];
+            dataFieldSelector.selections = dataSet.selectedFields;
             tableViewC.tableView.dataSource = dataFieldSelector;
             tableViewC.tableView.delegate = dataFieldSelector;
             
@@ -473,8 +522,8 @@ static const float MarginHeight = 4.0;
 // Construct a view used for selection display
 - (UIView *)makeSelectView:(TransitStopInfo *)stopInfo
 {
-    UIView *topView = [[UIView alloc] init];
-    topView.backgroundColor = [UIColor grayColor];
+    UIView *contentView = [[UIView alloc] init];
+    contentView.backgroundColor = [UIColor colorWithRed:0.25 green:0.25 blue:0.25 alpha:0.5];
     UILabel *label = [[UILabel alloc] init];
     label.font = [UIFont boldSystemFontOfSize:12.0];
     label.text = stopInfo.stopName;
@@ -483,13 +532,20 @@ static const float MarginHeight = 4.0;
     label.backgroundColor = [UIColor clearColor];
     label.textColor = [UIColor whiteColor];
 
-    topView.layer.cornerRadius = 9.0;
-    topView.layer.masksToBounds = YES;
-    topView.layer.borderColor = [UIColor grayColor].CGColor;
-    [topView addSubview:label];
-    topView.frame = CGRectMake(0,0,label.frame.size.width+2*MarginWidth,label.frame.size.height+2*MarginHeight);
+    contentView.layer.cornerRadius = 9.0;
+    contentView.layer.masksToBounds = YES;
+    contentView.layer.borderColor = [UIColor grayColor].CGColor;
+    [contentView addSubview:label];
+    float width = label.frame.size.width+2*MarginWidth;
+    float height = label.frame.size.height+2*MarginHeight;
+    contentView.frame = CGRectMake(-width/2,0,width,height);
+    
+    UIView *topView = [[UIView alloc] init];
+    topView.frame = CGRectMake(0, 0, width, height);
+    topView.backgroundColor = [UIColor clearColor];
+    topView.clipsToBounds = NO;
     topView.hidden = YES;
-    [self.view addSubview:topView];
+    [topView addSubview:contentView];
     
     return topView;
 }
@@ -521,10 +577,16 @@ static const float MarginHeight = 4.0;
                 MaplyViewTracker *viewTrack = [[MaplyViewTracker alloc] init];
                 viewTrack.view = selectView;
                 viewTrack.loc = cyl.baseCenter;
+                // Note: Could use a visibility range
                 [baseViewC addViewTracker:viewTrack];
             }
         }
     }
+}
+
+- (void)globeViewController:(WhirlyGlobeViewController *)viewC didTapAt:(WGCoordinate)coord
+{
+    [self clearSelection];
 }
 
 @end
