@@ -21,7 +21,7 @@
 #import "DataSetSelector.h"
 #import "DataFieldSelector.h"
 
-@interface MainViewController () <WhirlyGlobeViewControllerDelegate,UITableViewDataSource,UITableViewDelegate>
+@interface MainViewController () <WhirlyGlobeViewControllerDelegate,UITableViewDataSource,UITableViewDelegate,UIWebViewDelegate>
 
 @end
 
@@ -63,6 +63,8 @@
     NSArray *dataFieldColors;
     
     UIView *selectView;
+    bool pickingEnabled;
+    UIAlertView *alertView;
 }
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
@@ -129,6 +131,13 @@ static const float RangeHeight = 80.0;
     if ([loadableDataSets count] > 0)
     {
         [self loadDataSet:[loadableDataSets objectAtIndex:0]];
+    } else {
+        // Let them know about it
+        alertView = [[UIAlertView alloc] initWithTitle:@"No Data" message:@"You need to load at least one data set.  Tap the info button and read the directions for where to get a data set." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+        [alertView show];
+        [self clearMessage];
+        [self clearDisplayMessage];
+        [self disableSettings];
     }
     
     messageLabel.layer.cornerRadius = 9.0;
@@ -239,6 +248,7 @@ static const float RangeHeight = 80.0;
     settingsButton.alpha = 0.25;
     controlView.userInteractionEnabled = false;
     controlView.alpha = 0.25;
+    pickingEnabled = false;
 }
 
 - (void)enableSettings
@@ -247,6 +257,7 @@ static const float RangeHeight = 80.0;
     settingsButton.alpha = 1.0;
     controlView.userInteractionEnabled = true;
     controlView.alpha = 1.0;
+    pickingEnabled = true;
 }
 
 // Jump to the location of the current data set
@@ -306,15 +317,21 @@ static const float RangeHeight = 80.0;
                    });
 }
 
+- (void)calcStartTime:(NSTimeInterval *)startTime endTime:(NSTimeInterval *)endTime
+{
+    int dayOfWeek = segControl.selectedSegmentIndex;
+    NSTimeInterval timeOffset = dayOfWeek * 24 * 60* 60;
+    *startTime = rangeSelect.leftValue + timeOffset;
+    *endTime = rangeSelect.rightValue + timeOffset;
+}
+
 - (void)updateDisplay
 {
     [self clearSelection];
     
-    int dayOfWeek = segControl.selectedSegmentIndex;
-    NSTimeInterval timeOffset = dayOfWeek * 24 * 60* 60;
-    NSTimeInterval startTime = rangeSelect.leftValue + timeOffset;
-    NSTimeInterval endTime = rangeSelect.rightValue + timeOffset;
-
+    NSTimeInterval startTime,endTime;
+    [self calcStartTime:&startTime endTime:&endTime];
+    
     if (dataSet)
     {
         [self setMessage:@"Running Query"];
@@ -402,6 +419,23 @@ static const float RangeHeight = 80.0;
 
     if (runQuery)
         [self performSelector:@selector(updateDisplay) withObject:nil afterDelay:0.0];
+}
+
+- (IBAction)infoAction:(id)sender
+{
+    UIView *senderView = (UIView *)sender;
+    
+    UIViewController *webViewC = [[UIViewController alloc] init];
+    UIWebView *webView = [[UIWebView alloc] init];
+    [webViewC.view addSubview:webView];
+    webView.frame = webViewC.view.bounds;
+    webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [webView loadRequest:[NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"info" withExtension:@"html"]]];
+    webView.delegate = self;
+    
+    popControl = [[UIPopoverController alloc] initWithContentViewController:webViewC];
+    popControl.popoverContentSize = CGSizeMake(640,600);
+    [popControl presentPopoverFromRect:senderView.frame inView:self.view permittedArrowDirections:UIPopoverArrowDirectionAny animated:YES];
 }
 
 #pragma mark - Popover delegate
@@ -518,28 +552,82 @@ static const float RangeHeight = 80.0;
 
 static const float MarginWidth = 10.0;
 static const float MarginHeight = 4.0;
+static const float InterMarginHeight = 2.0;
 
 // Construct a view used for selection display
-- (UIView *)makeSelectView:(TransitStopInfo *)stopInfo
+- (UIView *)makeSelectView:(TransitStopInfo *)stopInfo full:(bool)fullInfo
 {
+    // We put the data in the content view
     UIView *contentView = [[UIView alloc] init];
     contentView.backgroundColor = [UIColor colorWithRed:0.25 green:0.25 blue:0.25 alpha:0.5];
-    UILabel *label = [[UILabel alloc] init];
-    label.font = [UIFont boldSystemFontOfSize:12.0];
-    label.text = stopInfo.stopName;
-    CGSize textSize = [label.text sizeWithFont:label.font];
-    label.frame = CGRectMake(MarginWidth,MarginHeight,textSize.width,textSize.height);
-    label.backgroundColor = [UIColor clearColor];
-    label.textColor = [UIColor whiteColor];
 
+    float totHeight = MarginHeight;
+    float maxWidth = 0.0;
+    // Label is the name of the stop
+    {
+        UILabel *label = [[UILabel alloc] init];
+        label.font = [UIFont boldSystemFontOfSize:12.0];
+        label.text = stopInfo.stopName;
+        CGSize textSize = [label.text sizeWithFont:label.font];
+        label.frame = CGRectMake(MarginWidth,totHeight,textSize.width,textSize.height);
+        maxWidth = std::max(maxWidth,textSize.width);
+        totHeight += textSize.height + InterMarginHeight;
+        label.backgroundColor = [UIColor clearColor];
+        label.textColor = [UIColor whiteColor];
+        [contentView addSubview:label];
+    }
+    
+    if (fullInfo)
+    {
+        // Data values to draw
+        for (NSDictionary *entry in [stopInfo.values allValues])
+        {
+            NSString *name = entry[@"name"];
+            NSNumber *val = entry[@"value"];
+            if (name && val)
+            {
+                UILabel *label = [[UILabel alloc] init];
+                label.font = [UIFont systemFontOfSize:12.0];
+                label.text = [NSString stringWithFormat:@"%@: %@",name,[val stringValue]];
+                CGSize textSize = [label.text sizeWithFont:label.font];
+                label.frame = CGRectMake(MarginWidth,totHeight,textSize.width,textSize.height);
+                totHeight += textSize.height + InterMarginHeight;
+                maxWidth = std::max(maxWidth,textSize.width);
+                label.backgroundColor = [UIColor clearColor];
+                label.textColor = [UIColor whiteColor];
+                [contentView addSubview:label];                
+            }
+        }
+        // Routes
+        if ([stopInfo.routes count] > 0)
+        {
+            NSMutableString *str = [NSMutableString stringWithString:(([stopInfo.routes count] > 1) ? @"Routes" : @"Route")];
+            for (NSString *route in stopInfo.routes)
+            {
+                [str appendFormat:@" %@",route];
+            }
+            UILabel *label = [[UILabel alloc] init];
+            label.font = [UIFont systemFontOfSize:12.0];
+            label.text = str;
+            CGSize textSize = [label.text sizeWithFont:label.font];
+            label.frame = CGRectMake(MarginWidth,totHeight,textSize.width,textSize.height);
+            totHeight += textSize.height + InterMarginHeight;
+            maxWidth = std::max(maxWidth,textSize.width);
+            label.backgroundColor = [UIColor clearColor];
+            label.textColor = [UIColor whiteColor];
+            [contentView addSubview:label];
+        }
+    }
+
+    // Size the content view to the content
     contentView.layer.cornerRadius = 9.0;
     contentView.layer.masksToBounds = YES;
     contentView.layer.borderColor = [UIColor grayColor].CGColor;
-    [contentView addSubview:label];
-    float width = label.frame.size.width+2*MarginWidth;
-    float height = label.frame.size.height+2*MarginHeight;
+    float width = maxWidth+2*MarginWidth;
+    float height = totHeight+MarginHeight;
     contentView.frame = CGRectMake(-width/2,0,width,height);
-    
+
+    // We've got a stop level view so the content can center itself
     UIView *topView = [[UIView alloc] init];
     topView.frame = CGRectMake(0, 0, width, height);
     topView.backgroundColor = [UIColor clearColor];
@@ -560,9 +648,22 @@ static const float MarginHeight = 4.0;
     }
 }
 
+// Display the current selection (no delay)
+- (void)selectionDisplay:(TransitStopInfo *)stopInfo cylinder:(MaplyShapeCylinder *)cyl full:(bool)full
+{
+    selectView = [self makeSelectView:stopInfo full:full];
+    MaplyViewTracker *viewTrack = [[MaplyViewTracker alloc] init];
+    viewTrack.view = selectView;
+    viewTrack.loc = cyl.baseCenter;
+    // Note: Could use a visibility range
+    [baseViewC addViewTracker:viewTrack];
+}
+
 - (void)globeViewController:(WhirlyGlobeViewController *)viewC didSelect:(NSObject *)selectedObj atLoc:(WGCoordinate)coord onScreen:(CGPoint)screenPt
 {
     [self clearSelection];
+    if (!pickingEnabled)
+        return;
     
     if ([selectedObj isKindOfClass:[MaplyShapeCylinder class]])
     {
@@ -573,12 +674,28 @@ static const float MarginHeight = 4.0;
             TransitStopInfo *stopInfo = [dataSet infoForStop:stopId];
             if (stopInfo)
             {
-                selectView = [self makeSelectView:stopInfo];
-                MaplyViewTracker *viewTrack = [[MaplyViewTracker alloc] init];
-                viewTrack.view = selectView;
-                viewTrack.loc = cyl.baseCenter;
-                // Note: Could use a visibility range
-                [baseViewC addViewTracker:viewTrack];
+                // Display what we have
+                [self selectionDisplay:stopInfo cylinder:cyl full:false];
+                
+                [self disableSettings];
+                
+                // Query for more data
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+                               ^{
+                                   NSTimeInterval startTime,endTime;
+                                   [self calcStartTime:&startTime endTime:&endTime];
+                                   [dataSet rerunQueryOnStop:stopInfo from:startTime to:endTime];
+                                   
+                                   dispatch_async(dispatch_get_main_queue(),
+                                                  ^{
+                                                      if (selectView)
+                                                      {
+                                                          [self clearSelection];
+                                                          [self selectionDisplay:stopInfo cylinder:cyl full:true];
+                                                      }
+                                                      [self enableSettings];
+                                                  });
+                               });
             }
         }
     }
@@ -587,6 +704,20 @@ static const float MarginHeight = 4.0;
 - (void)globeViewController:(WhirlyGlobeViewController *)viewC didTapAt:(WGCoordinate)coord
 {
     [self clearSelection];
+}
+
+#pragma mark - UIWebViewDelegate
+
+- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
+{
+    if (navigationType == UIWebViewNavigationTypeLinkClicked)
+    {
+        [popControl dismissPopoverAnimated:NO];
+        [[UIApplication sharedApplication] openURL:request.URL];
+        
+        return NO;
+    }
+    return YES;
 }
 
 @end

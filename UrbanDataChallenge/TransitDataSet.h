@@ -33,6 +33,8 @@
 @property(nonatomic) NSString *stopName;
 // Dictionary of values related to the active query
 @property(nonatomic) NSDictionary *values;
+// Routes this stop is included in
+@property(nonatomic) NSArray *routes;
 
 @end
 
@@ -82,6 +84,9 @@
 
 // Run the simple query.  Obviously more to this soon.
 - (NSAttributedString *)runQueryFrom:(NSTimeInterval)startTime to:(NSTimeInterval)endTime;
+
+// Rerun the query on a single stop to get more info
+- (void)rerunQueryOnStop:(TransitStopInfo *)stopInfo from:(NSTimeInterval)startTime to:(NSTimeInterval)endTime;
 
 // Info for the given stop
 - (TransitStopInfo *)infoForStop:(NSString *)stopId;

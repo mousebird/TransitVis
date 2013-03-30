@@ -163,6 +163,24 @@ static const float MaxCylinderRadius = 0.000002;
 static const float MaxCylinderHeight = 0.0003;
 static const float CylinderOffset = 0.000001;
 
+- (void)gatherRoutes:(std::set<StopAccumulatorGroup::Route> &)validRoutes
+{
+    // Assemble a list of routes we can search on
+    for (unsigned int ii=0;ii<[routes count];ii++)
+    {
+        NSString *routeName = [routes objectAtIndex:ii];
+        if (!_routeEnables || [[_routeEnables objectAtIndex:ii] boolValue])
+        {
+            std::string str = [routeName cStringUsingEncoding:NSASCIIStringEncoding];
+            if (!str.empty())
+            {
+                StopAccumulatorGroup::Route route(str);
+                validRoutes.insert(route);
+            }
+        }
+    }    
+}
+
 - (NSAttributedString *)runQueryFrom:(NSTimeInterval)startTime to:(NSTimeInterval)endTime
 {
     // No field to display
@@ -173,18 +191,8 @@ static const float CylinderOffset = 0.000001;
         [viewC removeObject:shapesObj];
     shapesObj = nil;
     
-    // Assemble a list of routes we can search on
-    std::set<std::string> validRoutes;
-    for (unsigned int ii=0;ii<[routes count];ii++)
-    {
-        NSString *routeName = [routes objectAtIndex:ii];
-        if (!_routeEnables || [[_routeEnables objectAtIndex:ii] boolValue])
-        {
-            std::string str = [routeName cStringUsingEncoding:NSASCIIStringEncoding];
-            if (!str.empty())
-                validRoutes.insert(str);
-        }
-    }
+    std::set<StopAccumulatorGroup::Route> validRoutes;
+    [self gatherRoutes:validRoutes];
     
     NSString *query = [NSString stringWithFormat:@"SELECT * FROM stopinfo where time_stop > %f AND time_stop < %f;",startTime,endTime];
     FMResultSet *results = [db executeQuery:query];
@@ -280,6 +288,52 @@ static const float CylinderOffset = 0.000001;
     [retStr appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@" (max: %.2f %@)",max_total,units]]];
     
     return retStr;
+}
+
+- (void)rerunQueryOnStop:(TransitStopInfo *)stopInfo from:(NSTimeInterval)startTime to:(NSTimeInterval)endTime
+{
+    std::set<StopAccumulatorGroup::Route> validRoutes;
+    [self gatherRoutes:validRoutes];
+
+    // Query for just the one stop
+    NSString *query = [NSString stringWithFormat:@"SELECT * FROM stopinfo where time_stop > %f AND time_stop < %f AND stop_id = '%@';",startTime,endTime,stopInfo.stopId];
+    FMResultSet *results = [db executeQuery:query];
+    
+    // Merge the results together by stop
+    NSMutableArray *fieldNames = [NSMutableArray array];
+    for (unsigned int ii=0;ii<[_selectedFields count];ii++)
+        [fieldNames addObject:((TransitDataField *)_selectedFields[ii]).rawFieldName];
+    StopAccumulatorGroup stopGroup(stopInfo.stopId,fieldNames,validRoutes);
+    stopGroup.accumulateStops(results);
+    
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    // Turn the queried data into fields for this stop
+    if (stopGroup.stopSet.size() == 1)
+    {
+        StopAccumulator *stop = *(stopGroup.stopSet.begin());
+        if (stop->values.size() == [_selectedFields count])
+        {
+            for (unsigned int ii=0;ii<[_selectedFields count];ii++)
+            {
+                NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+                TransitDataField *dataField = _selectedFields[ii];
+                entry[@"name"] = dataField.displayFieldName;
+                entry[@"value"] = [NSNumber numberWithFloat:stop->values[ii]];
+                dict[dataField.rawFieldName] = entry;
+            }
+        }
+    }
+    // Also add the routes we used
+    NSMutableArray *routeNames = [NSMutableArray array];
+    for (std::set<StopAccumulatorGroup::Route>::iterator it = stopGroup.validRoutes.begin();
+         it != stopGroup.validRoutes.end(); ++it)
+    {
+        if (it->used)
+            [routeNames addObject:[NSString stringWithFormat:@"%s",it->name.c_str()]];
+    }
+    
+    stopInfo.values = dict;
+    stopInfo.routes = routeNames;
 }
 
 @end

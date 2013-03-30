@@ -48,13 +48,24 @@ typedef std::set<StopAccumulator *,StopAccumulatorCmp> StopAccumulatorSet;
 class StopAccumulatorGroup
 {
 public:
-    StopAccumulatorGroup(MaplyVectorObject *stops,NSArray *queryFields,const std::set<std::string> &validRoutes);
+    // Representation of a route and we track if we used it or not
+    class Route
+    {
+    public:
+        Route(const std::string &name) : name(name), used(false) { }
+        bool operator < (const Route &that) const { return name < that.name; }
+        std::string name;
+        bool used;
+    };
+
+    StopAccumulatorGroup(MaplyVectorObject *stops,NSArray *queryFields,const std::set<StopAccumulatorGroup::Route> &validRoutes);
+    StopAccumulatorGroup(NSString *stopID,NSArray *queryFields,const std::set<StopAccumulatorGroup::Route> &validRoutes);
     ~StopAccumulatorGroup();
     
     // Run the accumulation over the results of a query
     bool accumulateStops(FMResultSet *results);
 
-    std::set<std::string> validRoutes;
+    std::set<Route> validRoutes;
     NSArray *queryFields;
     StopAccumulatorSet stopSet;
 };

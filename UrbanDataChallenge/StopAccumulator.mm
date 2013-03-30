@@ -10,7 +10,7 @@
 #include "StopAccumulator.h"
 
 // Construct with the vectors for the stops
-StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSArray *queryFields,const std::set<std::string> &validRoutes)
+StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSArray *queryFields,const std::set<Route> &validRoutes)
 : queryFields(queryFields), validRoutes(validRoutes)
 {
     NSArray *stops = [stopsVec splitVectors];
@@ -29,6 +29,17 @@ StopAccumulatorGroup::StopAccumulatorGroup(MaplyVectorObject *stopsVec,NSArray *
             stopSet.insert(theStop);
         }
     }
+}
+
+// Construct with just the one stop
+StopAccumulatorGroup::StopAccumulatorGroup(NSString *stopId,NSArray *queryFields,const std::set<Route> &validRoutes)
+: queryFields(queryFields), validRoutes(validRoutes)
+{
+    StopAccumulator *theStop = new StopAccumulator();
+    theStop->stop_id = [stopId cStringUsingEncoding:NSASCIIStringEncoding];
+    for (unsigned int ii=0;ii<[queryFields count];ii++)
+        theStop->values.push_back(0.0);
+    stopSet.insert(theStop);
 }
 
 // Destructor has to clean out the allocated stops
@@ -54,8 +65,17 @@ bool StopAccumulatorGroup::accumulateStops(FMResultSet *results)
 
         // This needs to be on a route we care about
         std::string routeStr = [[results stringForColumn:@"route"] cStringUsingEncoding:NSASCIIStringEncoding];
-        if (validRoutes.find(routeStr) == validRoutes.end())
+        std::set<Route>::iterator rit = validRoutes.find(Route(routeStr));
+        if (rit == validRoutes.end())
             continue;
+        // Mark the route as in use
+        if (!rit->used)
+        {
+            Route theRoute = *rit;
+            validRoutes.erase(rit);
+            theRoute.used = true;
+            validRoutes.insert(theRoute);
+        }
         
         StopAccumulatorSet::iterator existingIt = stopSet.find(&stop);
         if (existingIt != stopSet.end())
