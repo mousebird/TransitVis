@@ -303,15 +303,16 @@ static const float RangeHeight = 80.0;
                                               [self jumpToDataSet];
                                               
                                               dataSet.displayRoutes = true;
+
+                                              if ([dataSet->dataFields count] > 0)
+                                              {
+                                                  dataSet.selectedFields = [NSMutableArray arrayWithObject:[dataSet->dataFields objectAtIndex:0]];
+                                                  [self performSelector:@selector(updateDisplay) withObject:nil afterDelay:0.0];
+                                              }
                                           }
                                           
                                           [self clearMessage];
 
-                                          if ([dataSet->dataFields count] > 0)
-                                          {
-                                              dataSet.selectedFields = [NSMutableArray arrayWithObject:[dataSet->dataFields objectAtIndex:0]];
-                                              [self performSelector:@selector(updateDisplay) withObject:nil afterDelay:0.0];
-                                          }
                                           [self enableSettings];
                                       });
                    });
